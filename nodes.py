@@ -32,9 +32,6 @@ class CropInfo:
         self.original_width = original_width
         self.original_height = original_height
 
-        print(f"crop_info: x={x}, y={y}, width={width}, height={height}, original_width={original_width}, original_height={original_height}")
-
-
 
 class ExpandMultiple:
     def __init__(self):
@@ -167,13 +164,10 @@ class RestoreCrop:
 
     def restore(self, image:torch.Tensor, crop_info:CropInfo):
         img = convert_to_pil(image).convert("RGBA")
-        print(f"image: {img.size}") 
 
         restore_img = Image.new("RGBA", (crop_info.original_width, crop_info.original_height))
         img = img.resize((crop_info.width - crop_info.x, crop_info.height - crop_info.y))
         restore_img.paste(img, (crop_info.x, crop_info.y))
-
-        print(f"restore: x={crop_info.x}, y={crop_info.y}, width={crop_info.width}, height={crop_info.height}, original_width={crop_info.original_width}, original_height={crop_info.original_height}")
 
         return (convert_to_tensor(restore_img), )
 
