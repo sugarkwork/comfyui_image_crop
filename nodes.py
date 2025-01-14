@@ -57,10 +57,7 @@ class ExpandMultiple:
 
     CATEGORY = "image"
 
-    def expand(self, image:torch.Tensor, target_size:int=1024, multiple:int=128):
-        img = convert_to_pil(image).convert("RGBA")
-
-        original_width, original_height = img.size
+    def _new_size(self, original_width:int, original_height:int, target_size:int) -> tuple:
         aspect_ratio = original_width / original_height
 
         if original_width > original_height:
@@ -69,20 +66,31 @@ class ExpandMultiple:
         else:
             new_height = target_size
             new_width = int(new_height * aspect_ratio)
-
-        resized_image = img.resize((new_width, new_height), Image.LANCZOS)
-
+        
+        return (new_width, new_height)
+    
+    def _new_crop_size(self, new_width:int, new_height:int, multiple:int, target_size:int) -> tuple:
         new_width_crop = new_width
         new_height_crop = new_height
-
         if new_width == target_size:
             new_height_crop = (new_height // multiple) * multiple
             new_height_crop += multiple
         else:
             new_width_crop = (new_width // multiple) * multiple
             new_width_crop += multiple
+        
+        return (new_width_crop, new_height_crop)
 
-        processed_image = resized_image.crop((0, 0, new_width_crop, new_height))
+    def expand(self, image:torch.Tensor, target_size:int=1024, multiple:int=128):
+        img = convert_to_pil(image).convert("RGBA")
+
+        original_width, original_height = img.size
+        
+        new_width, new_height = self._new_size(original_width, original_height, target_size)
+        resized_image = img.resize((new_width, new_height), Image.LANCZOS)
+
+        new_width_crop, new_height_crop = self._new_crop_size(new_width, new_height, multiple, target_size)
+        processed_image = resized_image.crop((0, 0, new_width_crop, new_height_crop))
 
         return (convert_to_tensor(processed_image), CropInfo(0, 0, new_width_crop, new_height_crop, new_width, new_height))
 
