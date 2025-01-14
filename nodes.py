@@ -85,7 +85,7 @@ class ExpandMultiple:
         img = convert_to_pil(image).convert("RGBA")
 
         original_width, original_height = img.size
-        
+
         new_width, new_height = self._new_size(original_width, original_height, target_size)
         resized_image = img.resize((new_width, new_height), Image.LANCZOS)
 
@@ -159,6 +159,9 @@ class RestoreCrop:
             "required": {
                 "image": ("IMAGE",),
                 "crop_info": ("CROP_INFO",)
+            },
+            "optional": {
+                "scale_by": ("FLOAT", {"default": 1.0, "min": 0.0, "step": 0.1})
             }
         }
     
@@ -170,12 +173,18 @@ class RestoreCrop:
 
     CATEGORY = "image"
 
-    def restore(self, image:torch.Tensor, crop_info:CropInfo):
+    def restore(self, image:torch.Tensor, crop_info:CropInfo, scale_by:float=1.0):
         img = convert_to_pil(image).convert("RGBA")
 
-        restore_img = Image.new("RGBA", (crop_info.original_width, crop_info.original_height))
-        img = img.resize((crop_info.width - crop_info.x, crop_info.height - crop_info.y))
-        restore_img.paste(img, (crop_info.x, crop_info.y))
+        restore_img = Image.new("RGBA", 
+                                (int(crop_info.original_width * scale_by), int(crop_info.original_height * scale_by)), 
+                                (0, 0, 0, 0))
+        img = img.resize(
+            (
+                int(crop_info.width * scale_by) - int(crop_info.x * scale_by), 
+                int(crop_info.height * scale_by) - int(crop_info.y * scale_by)
+                ))
+        restore_img.paste(img, (int(crop_info.x * scale_by), int(crop_info.y * scale_by)))
 
         return (convert_to_tensor(restore_img), )
 
