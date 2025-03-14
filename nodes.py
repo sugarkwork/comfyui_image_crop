@@ -128,11 +128,11 @@ class CropTransparent:
         
         # バウンディングボックスを取得
         bbox = Image.fromarray(non_transparent).getbbox()
-        
+    
+        # 画像の寸法を取得
+        width, height = img.size
+
         if bbox:
-            # 画像の寸法を取得
-            width, height = img.size
-            
             # マージンを計算（画像の短辺の指定された割合）
             margin = int(min(width, height) * (margin / 100))
             
@@ -145,8 +145,38 @@ class CropTransparent:
             )
             
             cropped_img = img.crop(bbox_with_margin)
+        else:
+            bbox_with_margin = (0, 0, width, height)
+            cropped_img = img
+
         return (convert_to_tensor(cropped_img), CropInfo(*bbox_with_margin, width, height))
 
+
+class CropReapply:
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "crop_info": ("CROP_INFO",)
+            }
+        }
+    
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+
+    FUNCTION = "reapply"
+    OUTPUT_NODE = True
+
+    CATEGORY = "image"
+
+    def reapply(self, image:torch.Tensor, crop_info:CropInfo):
+        img = convert_to_pil(image).convert("RGBA")
+        img = img.crop((crop_info.x, crop_info.y, crop_info.x + crop_info.width, crop_info.y + crop_info.height))
+        return (convert_to_tensor(img), )
 
 
 class RestoreCrop:
@@ -183,7 +213,8 @@ class RestoreCrop:
             (
                 int(crop_info.width * scale_by) - int(crop_info.x * scale_by), 
                 int(crop_info.height * scale_by) - int(crop_info.y * scale_by)
-                ))
+                ),
+                Image.LANCZOS)
         restore_img.paste(img, (int(crop_info.x * scale_by), int(crop_info.y * scale_by)))
 
         return (convert_to_tensor(restore_img), )
@@ -193,12 +224,14 @@ NODE_CLASS_MAPPINGS = {
     "CropTransparent": CropTransparent,
     "RestoreCrop": RestoreCrop,
     "ExpandMultiple": ExpandMultiple,
+    "CropReapply": CropReapply,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "CropTransparent": "CropTransparent",
     "RestoreCrop": "RestoreCrop",
     "ExpandMultiple": "ExpandMultiple",
+    "CropReapply": "CropReapply",
 }
 
 
